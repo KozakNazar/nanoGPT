@@ -22,7 +22,7 @@ custom_addmm = load(
     verbose=True
 )
 
-# Тестові дані (матриці 2x2 для наочності)
+# Тестові дані (матриці 2x2)
 # Формула: res = beta * input + alpha * (mat1 @ mat2)
 input_t = torch.ones((2, 2), device='cuda') * 10.0
 mat1 = torch.ones((2, 2), device='cuda') * 2.0
