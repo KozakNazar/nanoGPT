@@ -39,7 +39,6 @@ ptdtype = torch.float16 #!
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 #ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype, enabled=False)
 
-
 # model
 if init_from == 'resume':
     # init from a model saved in a specific directory
