@@ -1,5 +1,6 @@
 //#define CUDA_CODE
 #define CUBLAS_CODE
+//#define CUTLASS_CODE
 #ifdef CUDA_CODE
 
 #include <torch/extension.h>
@@ -193,4 +194,163 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         &cleanup,
         "cleanup");
 }
+
+#elif defined(CUTLASS_CODE)
+
+#include <torch/extension.h>
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+
+#include <cutlass/cutlass.h>
+#include <cutlass/gemm/device/gemm.h>
+
+//static cudaStream_t get_cuda_stream() {
+//    return at::cuda::getDefaultCUDAStream();
+//}
+
+// ============================================================
+// FP32 GEMM via CUTLASS
+//
+// Computes:
+//
+//     Y = X * W^T
+//
+// Shapes:
+//
+//     X : [M, K]
+//     W : [N, K]
+//     Y : [M, N]
+//
+// PyTorch tensors are ROW-MAJOR.
+//
+// ============================================================
+
+torch::Tensor custom_linear_forward(
+    torch::Tensor X,
+    torch::Tensor W)
+{
+    TORCH_CHECK(X.is_cuda(), "X must be CUDA");
+    TORCH_CHECK(W.is_cuda(), "W must be CUDA");
+
+    TORCH_CHECK(X.scalar_type() == torch::kFloat32,
+        "X must be float32");
+
+    TORCH_CHECK(W.scalar_type() == torch::kFloat32,
+        "W must be float32");
+
+    TORCH_CHECK(X.dim() == 2, "X must be 2D");
+    TORCH_CHECK(W.dim() == 2, "W must be 2D");
+
+    X = X.contiguous();
+    W = W.contiguous();
+
+    int M = X.size(0);
+    int K = X.size(1);
+
+    int N = W.size(0);
+
+    TORCH_CHECK(W.size(1) == K,
+        "Shape mismatch");
+
+    auto Y = torch::empty(
+        { M, N },
+        X.options()
+    );
+
+    // ========================================================
+    // CUTLASS GEMM configuration
+    //
+    // A = X [M,K] row-major
+    // B = W [N,K] row-major
+    //
+    // We need:
+    //
+    //     Y = X * W^T
+    //
+    // therefore:
+    //
+    //     B is ColumnMajor
+    //
+    // because row-major W[N,K]
+    // is equivalent in memory to
+    // column-major W^T[K,N]
+    //
+    // ========================================================
+
+    using ElementInputA = float;
+    using LayoutInputA = cutlass::layout::RowMajor;
+
+    using ElementInputB = float;
+    using LayoutInputB = cutlass::layout::ColumnMajor;
+
+    using ElementOutput = float;
+    using LayoutOutput = cutlass::layout::RowMajor;
+
+    using ElementAccumulator = float;
+
+    using Gemm = cutlass::gemm::device::Gemm<
+        ElementInputA,
+        LayoutInputA,
+
+        ElementInputB,
+        LayoutInputB,
+
+        ElementOutput,
+        LayoutOutput,
+
+        ElementAccumulator
+    >;
+
+    typename Gemm::Arguments arguments(
+        { M, N, K },
+
+        {
+            X.data_ptr<float>(),
+            K
+        },
+
+        {
+            W.data_ptr<float>(),
+            K
+        },
+
+        {
+            Y.data_ptr<float>(),
+            N
+        },
+
+        {
+            Y.data_ptr<float>(),
+            N
+        },
+
+        {
+            1.0f,
+            0.0f
+        }
+    );
+
+    Gemm gemm_op;
+
+    cutlass::Status status = gemm_op(arguments);
+
+    TORCH_CHECK(
+        status == cutlass::Status::kSuccess,
+        "CUTLASS GEMM failed"
+    );
+
+    return Y;
+}
+
+// ============================================================
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def(
+        "forward",
+        &custom_linear_forward,
+        "CUTLASS FP32 Linear"
+    );
+}
+
 #endif
