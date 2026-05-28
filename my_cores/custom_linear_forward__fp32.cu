@@ -83,17 +83,41 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 #elif defined(CUBLAS_CODE)
 
 #include <torch/extension.h>
+
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+
+// ============================================================
+// Global cuBLAS handle
+// ============================================================
 
 static cublasHandle_t g_handle = nullptr;
 
 cublasHandle_t get_handle() {
     if (!g_handle) {
         cublasCreate(&g_handle);
+
+        // Tensor Cores
+        cublasSetMathMode(
+            g_handle,
+            CUBLAS_TENSOR_OP_MATH
+        );
     }
     return g_handle;
 }
+
+// ============================================================
+// FP32 Linear
+//
+// Computes:
+//
+//     Y = X * W^T
+//
+// X : [M,K] FP32
+// W : [N,K] FP32
+// Y : [M,N] FP32
+//
+// ============================================================
 
 torch::Tensor custom_linear_forward(
     torch::Tensor X,
@@ -178,12 +202,16 @@ torch::Tensor custom_linear_forward(
     return Y;
 }
 
+// ============================================================
+
 void cleanup() {
     if (g_handle) {
         cublasDestroy(g_handle);
         g_handle = nullptr;
     }
 }
+
+// ============================================================
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("forward",
@@ -203,6 +231,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 #include <cuda_runtime.h>
 
 #include <cutlass/cutlass.h>
+
 #include <cutlass/gemm/device/gemm.h>
 
 //static cudaStream_t get_cuda_stream() {
