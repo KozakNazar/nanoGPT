@@ -15,6 +15,9 @@
 
 #include "cutlass/numeric_types.h"
 
+#include "cutlass/gemm/threadblock/threadblock_swizzle.h" // GemmIdentityThreadblockSwizzle
+#include "cutlass/gemm/kernel/gemm.h" //   /// Kernel parameters object //typename GemmKernel::Params params_;
+
 //static cudaStream_t get_cuda_stream() {
 //    return at::cuda::getDefaultCUDAStream();
 //}
@@ -219,8 +222,88 @@ torch::Tensor custom_linear_forward(
     // =====================================================
     // Explicit kernel launch
     // =====================================================
+    
+    status = gemm_op.run(nullptr); //////////////////////////////// :
+    /// Threadblock-level swizzling operator
+    //typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>;
+    //using ThreadblockSwizzle = ThreadblockSwizzle_;
+    cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<> threadblock_swizzle; // ThreadblockSwizzle threadblock_swizzle; // typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>
+#if 0
 
-    status = gemm_op.run(nullptr);
+    /// Define the kernel
+    using GemmKernel = typename kernel::DefaultGemm <
+        ElementA,
+        LayoutA,
+        kAlignmentA,
+        ElementB,
+        LayoutB,
+        kAlignmentB,
+        ElementC,
+        LayoutC,
+        ElementAccumulator,
+        OperatorClass,
+        ArchTag,
+        ThreadblockShape,
+        WarpShape,
+        InstructionShape,
+        EpilogueOutputOp,
+        ThreadblockSwizzle,
+        kStages,
+        kSplitKSerial,
+        Operator,
+        SharedMemoryClearOption::kNone,
+        GatherA,
+        GatherB,
+        ScatterD,
+        PermuteDLayout
+    > ::GemmKernel;
+
+dim3 grid =
+    threadblock_swizzle.get_grid_shape(
+        GemmKernel::Params.grid_tiled_shape // params_.grid_tiled_shape
+    );
+
+dim3 block(
+    GemmKernel::kThreadCount,
+    1,
+    1
+);
+
+cudaError_t result;
+
+int smem_size =
+    int(sizeof(typename GemmKernel::SharedStorage));
+
+if (smem_size >= (48 << 10))
+{
+    result =
+        cudaFuncSetAttribute(
+            Kernel<GemmKernel>,
+            cudaFuncAttributeMaxDynamicSharedMemorySize,
+            smem_size
+        );
+
+    if (result != cudaSuccess)
+    {
+        status = cutlass::Status::kErrorInternal;
+    }
+}
+
+cutlass::arch::synclog_setup();
+
+cutlass::Kernel<GemmKernel>
+<<<grid, block, smem_size, nullptr>>>(
+    params_
+);
+
+result = cudaGetLastError();
+
+status =
+    (result == cudaSuccess)
+        ? cutlass::Status::kSuccess
+        : cutlass::Status::kErrorInternal;
+#endif
+    //////////////////////////////////////////////////////////////////////
 
     TORCH_CHECK(
         status == cutlass::Status::kSuccess,
