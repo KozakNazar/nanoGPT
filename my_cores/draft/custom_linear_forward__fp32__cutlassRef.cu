@@ -350,34 +350,6 @@ torch::Tensor custom_linear_forward(
 
 #if 0
 
-    /// Define the kernel
-    using GemmKernel = typename kernel::DefaultGemm <
-        ElementA,
-        LayoutA,
-        kAlignmentA,
-        ElementB,
-        LayoutB,
-        kAlignmentB,
-        ElementC,
-        LayoutC,
-        ElementAccumulator,
-        OperatorClass,
-        ArchTag,
-        ThreadblockShape,
-        WarpShape,
-        InstructionShape,
-        EpilogueOutputOp,
-        ThreadblockSwizzle,
-        kStages,
-        kSplitKSerial,
-        Operator,
-        SharedMemoryClearOption::kNone,
-        GatherA,
-        GatherB,
-        ScatterD,
-        PermuteDLayout
-    > ::GemmKernel;
-
 dim3 grid =
     threadblock_swizzle.get_grid_shape(
         GemmKernel::Params.grid_tiled_shape // params_.grid_tiled_shape
