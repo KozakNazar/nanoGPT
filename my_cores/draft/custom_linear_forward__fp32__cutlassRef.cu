@@ -244,54 +244,110 @@ torch::Tensor custom_linear_forward(
         /// Tag indicating architecture to tune for
     typedef cutlass::arch::Sm70 ArchTag__; //typename ArchTag_ = arch::Sm70;
 
+    /// Threadblock-level tile size (concept: GemmShape)
+    typedef cutlass::gemm::device::DefaultGemmConfiguration<
+        OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::ThreadblockShape
+        ThreadblockShape__;
+
+    /// Warp-level tile size (concept: GemmShape)
+    typedef cutlass::gemm::device::DefaultGemmConfiguration<
+        OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::WarpShape
+        WarpShape__;
+
+    /// Instruction-level tile size (concept: GemmShape)
+    typedef cutlass::gemm::device::DefaultGemmConfiguration<
+        OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::InstructionShape
+        InstructionShape__;
+
     /// Epilogue output operator
     typedef cutlass::gemm::device::DefaultGemmConfiguration<
         OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
         ElementC/*_*/, ElementAccumulator/*_*/>::EpilogueOutputOp
         EpilogueOutputOp__;
 
+    /// Threadblock-level swizzling operator
+    typedef cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>
+        ThreadblockSwizzle__;
+      
+    /// Number of stages used in the pipelined mainloop       
+    int Stages =     
+        cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
+
     /// Access granularity of A matrix in units of elements
-    int AlignmentA =
+    /*!*/int AlignmentA =
         cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
         ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA;
         /// Access granularity of B matrix in units of elements
-    int AlignmentB =
+    /*!*/int AlignmentB =
         cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
         ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB;
 
+    /// If true, kernel supports split-K with serial reduction
+    /*!*/bool SplitKSerial = false;
 
-    static int const kAlignmentA = AlignmentA;
-    static int const kAlignmentB = AlignmentB;
-    static int const kAlignmentC = EpilogueOutputOp__::kCount;
-#if 0
+    /// Operation performed by GEMM
+    typedef cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::Operator
+        Operator__;
+
+    /// Gather operand A by using an index array
+    /*!*/bool GatherA = false;
+       
+    /// Gather operand B by using an index array
+    /*!*/bool GatherB = false;
+    
+    /// Scatter result D by using an index array
+    /*!*/bool ScatterD = false;
+
+    /// Permute result D
+    typedef cutlass::layout::NoPermute PermuteDLayout;
+
+//#define kAlignmentA AlignmentA
+//    /*static*/ int const kAlignmentB AlignmentB
+//    /*static*/ int const kAlignmentC = EpilogueOutputOp__::kCount;
+    ///*static*/ int const kStages = Stages;
+    ///*static*/ bool const kSplitKSerial = SplitKSerial;
+
     /// Define the kernel
-    using GemmKernel = typename kernel::DefaultGemm <
+    typedef 
+        cutlass::gemm::kernel::DefaultGemm <
         ElementA, // ElementA
         LayoutA, // LayoutA
-        kAlignmentA,
+        //kAlignmentA,
+            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+            ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA,
         ElementB, // ElementB
         LayoutB, // LayoutB
-        kAlignmentB,
+        //kAlignmentB,
+            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+            ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB,
         ElementC, // ElementC
         LayoutC, // LayoutC
         ElementAccumulator, // ElementAccumulator
-        OperatorClass,
-        ArchTag,
-        ThreadblockShape,
-        WarpShape,
-        InstructionShape,
-        EpilogueOutputOp,
-        ThreadblockSwizzle,
-        kStages,
-        kSplitKSerial,
-        Operator,
-        SharedMemoryClearOption::kNone,
-        GatherA,
-        GatherB,
-        ScatterD,
+        OperatorClass__/*OperatorClass*/,
+        ArchTag__/*ArchTag_*/,
+        ThreadblockShape__/*ThreadblockShape*/,
+        WarpShape__/*WarpShape*/,
+        InstructionShape__/*InstructionShape*/,
+        EpilogueOutputOp__/*EpilogueOutputOp*/,
+        ThreadblockSwizzle__/*ThreadblockSwizzle*//*cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>*/,
+        //kStages,
+            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+            ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
+        false/*kSplitKSerial*/,
+        Operator__/*Operator*/,
+        cutlass::gemm::SharedMemoryClearOption::kNone, //!
+        false/*GatherA*/,
+        false/*GatherB*/,
+        false/*ScatterD*/,
         PermuteDLayout
-    > ::GemmKernel;
-#endif
+    > ::GemmKernel
+        GemmKernel__;
+
 #if 0
 
     /// Define the kernel
