@@ -213,6 +213,10 @@ torch::Tensor custom_linear_forward(
         );
     }
 
+    // =====================================================
+    // Explicit initialize
+    // =====================================================
+
     /// Operator class tag
     typedef cutlass::arch::OpClassSimt OperatorClass__;//typename OperatorClass_ = arch::OpClassSimt; 
 
@@ -287,7 +291,6 @@ torch::Tensor custom_linear_forward(
         ///*static*/ int const kStages = Stages;
         ///*static*/ bool const kSplitKSerial = SplitKSerial;
 
-
     /// Threadblock-level swizzling operator
     //typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>;
     //using ThreadblockSwizzle = ThreadblockSwizzle_;
@@ -329,26 +332,13 @@ torch::Tensor custom_linear_forward(
         > ::GemmKernel
         ;//GemmKernel__;
 
-  /// Kernel parameters object
+    /// Kernel parameters object
     typename GemmKernel__::Params params_;
 
-
-    // =====================================================
-    // Explicit initialize
-    // =====================================================
-
-#if 0
-    status = gemm_op.initialize(
-        args,
-        workspace,
-        nullptr
-    );
-#else
-    //Arguments const& 
-    args; 
-    //void* 
-    workspace/*= nullptr*/; 
+    //Arguments const& args; 
+    //void* workspace/*= nullptr*/; 
     cudaStream_t stream = nullptr;
+
     // Determine grid shape
     ThreadblockSwizzle__ threadblock_swizzle__2;
 
@@ -420,7 +410,6 @@ torch::Tensor custom_linear_forward(
 
             //UnderlyingArguments to_underlying_arguments__(Arguments const& args) {}
 
-
             size_t bytes = get_workspace_size__(args);  // size_t bytes = get_workspace_size(args);
 
             cudaError_t result = cudaMemsetAsync(workspace, 0, bytes, stream);
@@ -432,7 +421,6 @@ torch::Tensor custom_linear_forward(
         }
     }
     else {
-
         if (args.split_k_slices > 1) {
             //return Status::kErrorInvalidProblem;
             exit(0);
@@ -456,8 +444,6 @@ torch::Tensor custom_linear_forward(
 
     //return Status::kSuccess;
 
-#endif
-
     TORCH_CHECK(
         status == cutlass::Status::kSuccess,
         "initialize() failed"
@@ -466,89 +452,49 @@ torch::Tensor custom_linear_forward(
     // =====================================================
     // Explicit kernel launch
     // =====================================================
-    
-    //status = gemm_op.run(nullptr); ////////////////////////////////:
 
-    //dim3 grid =
-    //    threadblock_swizzle__1.get_grid_shape(
-    //        GemmKernel__::Params.grid_tiled_shape // params_.grid_tiled_shape
-    //    );
-
-    //dim3 block(
-    //    GemmKernel__::kThreadCount,
-    //    1,
-    //    1
-    //);
-
-#if 0
-    /// Define the kernel
-    using GemmKernel = typename kernel::DefaultGemm <
-        ElementA,
-        LayoutA,
-        kAlignmentA,
-        ElementB,
-        LayoutB,
-        kAlignmentB,
-        ElementC,
-        LayoutC,
-        ElementAccumulator,
-        OperatorClass,
-        ArchTag,
-        ThreadblockShape,
-        WarpShape,
-        InstructionShape,
-        EpilogueOutputOp,
-        ThreadblockSwizzle,
-        kStages,
-        kSplitKSerial,
-        Operator,
-        SharedMemoryClearOption::kNone,
-        GatherA,
-        GatherB,
-        ScatterD,
-        PermuteDLayout
-    > ::GemmKernel;
-#endif
-
-#if 0
-
-
-
-cudaError_t result;
-
-int smem_size =
-    int(sizeof(typename GemmKernel::SharedStorage));
-
-if (smem_size >= (48 << 10))
-{
-    result =
-        cudaFuncSetAttribute(
-            Kernel<GemmKernel>,
-            cudaFuncAttributeMaxDynamicSharedMemorySize,
-            smem_size
+    dim3 grid =
+        threadblock_swizzle__1.get_grid_shape(
+            params_.grid_tiled_shape
         );
 
-    if (result != cudaSuccess)
-    {
+    dim3 block(
+        GemmKernel__::kThreadCount,
+        1,
+        1
+    );
+
+    cudaError_t result;
+
+    int smem_size =
+        int(sizeof(typename GemmKernel__::SharedStorage));
+
+    if (smem_size >= (48 << 10)){
+        result =
+            cudaFuncSetAttribute(
+                cutlass::Kernel<GemmKernel__>,
+                cudaFuncAttributeMaxDynamicSharedMemorySize,
+                smem_size
+            );
+
+    if (result != cudaSuccess){
         status = cutlass::Status::kErrorInternal;
     }
 }
 
-cutlass::arch::synclog_setup();
+    cutlass::arch::synclog_setup();
 
-cutlass::Kernel<GemmKernel>
-<<<grid, block, smem_size, nullptr>>>(
-    params_
-);
+    cutlass::Kernel<GemmKernel__>
+    <<<grid, block, smem_size, nullptr>>>(
+        params_
+    );
 
-result = cudaGetLastError();
+    result = cudaGetLastError();
 
-status =
-    (result == cudaSuccess)
-        ? cutlass::Status::kSuccess
-        : cutlass::Status::kErrorInternal;
-#endif
-    //////////////////////////////////////////////////////////////////////
+    status =
+        (result == cudaSuccess)
+            ? cutlass::Status::kSuccess
+            : cutlass::Status::kErrorInternal;
 
     TORCH_CHECK(
         status == cutlass::Status::kSuccess,
