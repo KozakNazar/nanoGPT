@@ -389,7 +389,7 @@ torch::Tensor custom_linear_forward(
         PermuteDLayout__
     > ;
 
-    using UnderlyingArguments = typename UnderlyingOperator::Arguments;
+    //using UnderlyingArguments = typename UnderlyingOperator::Arguments;
 
     if (false/*kSplitKSerial*/) {
         if (args.split_k_slices > 1) {
