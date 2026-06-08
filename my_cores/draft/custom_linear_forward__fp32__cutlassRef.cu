@@ -213,35 +213,10 @@ torch::Tensor custom_linear_forward(
         );
     }
 
-    // =====================================================
-    // Explicit initialize
-    // =====================================================
-
-    status = gemm_op.initialize(
-        args,
-        workspace,
-        nullptr
-    );
-
-    TORCH_CHECK(
-        status == cutlass::Status::kSuccess,
-        "initialize() failed"
-    );
-
-    // =====================================================
-    // Explicit kernel launch
-    // =====================================================
-    
-    status = gemm_op.run(nullptr); ////////////////////////////////:
-    /// Threadblock-level swizzling operator
-    //typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>;
-    //using ThreadblockSwizzle = ThreadblockSwizzle_;
-    cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<> threadblock_swizzle; // ThreadblockSwizzle threadblock_swizzle; // typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>
-
     /// Operator class tag
     typedef cutlass::arch::OpClassSimt OperatorClass__;//typename OperatorClass_ = arch::OpClassSimt; 
 
-        /// Tag indicating architecture to tune for
+    /// Tag indicating architecture to tune for
     typedef cutlass::arch::Sm70 ArchTag__; //typename ArchTag_ = arch::Sm70;
 
     /// Threadblock-level tile size (concept: GemmShape)
@@ -271,17 +246,17 @@ torch::Tensor custom_linear_forward(
     /// Threadblock-level swizzling operator
     typedef cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>
         ThreadblockSwizzle__;
-      
+
     /// Number of stages used in the pipelined mainloop       
-    int Stages =     
+    int Stages__ =
         cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
-        ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kStages;
 
     /// Access granularity of A matrix in units of elements
     /*!*/int AlignmentA =
         cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
         ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA;
-        /// Access granularity of B matrix in units of elements
+    /// Access granularity of B matrix in units of elements
     /*!*/int AlignmentB =
         cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
         ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB;
@@ -296,35 +271,41 @@ torch::Tensor custom_linear_forward(
 
     /// Gather operand A by using an index array
     /*!*/bool GatherA = false;
-       
+
     /// Gather operand B by using an index array
     /*!*/bool GatherB = false;
-    
+
     /// Scatter result D by using an index array
     /*!*/bool ScatterD = false;
 
     /// Permute result D
-    typedef cutlass::layout::NoPermute PermuteDLayout;
+    typedef cutlass::layout::NoPermute PermuteDLayout__;
 
-//#define kAlignmentA AlignmentA
-//    /*static*/ int const kAlignmentB AlignmentB
-//    /*static*/ int const kAlignmentC = EpilogueOutputOp__::kCount;
-    ///*static*/ int const kStages = Stages;
-    ///*static*/ bool const kSplitKSerial = SplitKSerial;
+    //#define kAlignmentA AlignmentA
+    //    /*static*/ int const kAlignmentB AlignmentB
+    //    /*static*/ int const kAlignmentC = EpilogueOutputOp__::kCount;
+        ///*static*/ int const kStages = Stages;
+        ///*static*/ bool const kSplitKSerial = SplitKSerial;
+
+
+    /// Threadblock-level swizzling operator
+    //typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>;
+    //using ThreadblockSwizzle = ThreadblockSwizzle_;
+    ThreadblockSwizzle__/*cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>*/ threadblock_swizzle__1; // ThreadblockSwizzle threadblock_swizzle; // typename ThreadblockSwizzle_ = typename threadblock::GemmIdentityThreadblockSwizzle<>
 
     /// Define the kernel
-    typedef 
+    using GemmKernel__ = typename
         cutlass::gemm::kernel::DefaultGemm <
         ElementA, // ElementA
         LayoutA, // LayoutA
         //kAlignmentA,
-            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
-            ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA,
+        cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA,
         ElementB, // ElementB
         LayoutB, // LayoutB
         //kAlignmentB,
-            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
-            ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB,
+        cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB,
         ElementC, // ElementC
         LayoutC, // LayoutC
         ElementAccumulator, // ElementAccumulator
@@ -336,30 +317,202 @@ torch::Tensor custom_linear_forward(
         EpilogueOutputOp__/*EpilogueOutputOp*/,
         ThreadblockSwizzle__/*ThreadblockSwizzle*//*cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>*/,
         //kStages,
-            cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
-            ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
+        cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
         false/*kSplitKSerial*/,
         Operator__/*Operator*/,
         cutlass::gemm::SharedMemoryClearOption::kNone, //!
         false/*GatherA*/,
         false/*GatherB*/,
         false/*ScatterD*/,
+        PermuteDLayout__
+        > ::GemmKernel
+        ;//GemmKernel__;
+
+  /// Kernel parameters object
+    typename GemmKernel__::Params params_;
+
+
+    // =====================================================
+    // Explicit initialize
+    // =====================================================
+
+#if 0
+    status = gemm_op.initialize(
+        args,
+        workspace,
+        nullptr
+    );
+#else
+    //Arguments const& 
+    args; 
+    //void* 
+    workspace/*= nullptr*/; 
+    cudaStream_t stream = nullptr;
+    // Determine grid shape
+    ThreadblockSwizzle__ threadblock_swizzle__2;
+
+    cutlass::gemm::GemmCoord grid_shape = threadblock_swizzle__2.get_tiled_shape(
+        args.problem_size,
+        { ThreadblockShape__::kM, ThreadblockShape__::kN, ThreadblockShape__::kK },
+        args.split_k_slices);
+
+    using UnderlyingOperator = cutlass::gemm::device::Gemm <
+        ElementB, // ElementB
+        typename cutlass::layout::LayoutTranspose<LayoutB>::type,
+        ElementA, // ElementA
+        typename cutlass::layout::LayoutTranspose<LayoutA>::type,
+        ElementC, // ElementC
+        cutlass::layout::RowMajor,
+        ElementAccumulator, // ElementAccumulator
+        OperatorClass__/*OperatorClass*/,
+        ArchTag__/*ArchTag_*/,
+        ThreadblockShape__/*ThreadblockShape*/,
+        WarpShape__/*WarpShape*/,
+        InstructionShape__/*InstructionShape*/,
+        EpilogueOutputOp__/*EpilogueOutputOp*/,
+        ThreadblockSwizzle__/*ThreadblockSwizzle*//*cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>*/,
+        //Stages__,
+        cutlass::gemm::device::DefaultGemmConfiguration<OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kStages,
+        //kAlignmentB, // B
+        cutlass::gemm::device::DefaultGemmConfiguration < OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentB,
+        //kAlignmentA, // A
+        cutlass::gemm::device::DefaultGemmConfiguration < OperatorClass__/*OperatorClass_*/, ArchTag__/*ArchTag_*/, ElementA/*_*/, ElementB/*_*/,
+        ElementC/*_*/, ElementAccumulator/*_*/>::kAlignmentA,
+        false/*kSplitKSerial*/,
+        Operator__/*Operator*/,
+        false/*GatherB*/, // B
+        false/*GatherA*/, // A
+        false/*ScatterD*/,
+        PermuteDLayout__
+    > ;
+
+    using UnderlyingArguments = typename UnderlyingOperator::Arguments;
+
+    if (false/*kSplitKSerial*/) {
+        if (args.split_k_slices > 1) {
+            if (!workspace) {
+                //return cutlass::Status::kErrorWorkspaceNull;
+                exit(0);
+            }
+
+            auto get_workspace_size__ = [](GemmOperator::Arguments const& args) -> size_t {
+
+                size_t bytes = 0;
+
+                // Determine grid shape
+                ThreadblockSwizzle__ threadblock_swizzle__l;
+
+                cutlass::gemm::GemmCoord tiled_shape = threadblock_swizzle__l.get_tiled_shape(
+                    args.problem_size,
+                    { ThreadblockShape__::kM, ThreadblockShape__::kN, ThreadblockShape__::kK },
+                    args.split_k_slices);
+
+                if (false/*kSplitKSerial*/ && args.split_k_slices > 1) {
+
+                    bytes += sizeof(int) * size_t(tiled_shape.m()) * size_t(tiled_shape.n());
+                }
+
+                return bytes;
+                };
+
+            //UnderlyingArguments to_underlying_arguments__(Arguments const& args) {}
+
+
+            size_t bytes = get_workspace_size__(args);  // size_t bytes = get_workspace_size(args);
+
+            cudaError_t result = cudaMemsetAsync(workspace, 0, bytes, stream);
+
+            if (result != cudaSuccess) {
+                //return cutlass::Status::kErrorInternal;
+                exit(0);
+            }
+        }
+    }
+    else {
+
+        if (args.split_k_slices > 1) {
+            //return Status::kErrorInvalidProblem;
+            exit(0);
+        }
+    }
+#if 0
+    // Initialize the Params structure
+    params_ = typename GemmKernel::Params{
+      args.problem_size,
+      grid_shape,
+      args.ref_A.non_const_ref(),
+      args.ref_B.non_const_ref(),
+      args.ref_C.non_const_ref(),
+      args.ref_D,
+      args.epilogue,
+      static_cast<int*>(workspace),
+      args.gather_A_indices,
+      args.gather_B_indices,
+      args.scatter_D_indices
+    };
+
+    //return Status::kSuccess;
+#endif
+#endif
+
+    TORCH_CHECK(
+        status == cutlass::Status::kSuccess,
+        "initialize() failed"
+    );
+
+    // =====================================================
+    // Explicit kernel launch
+    // =====================================================
+    
+    //status = gemm_op.run(nullptr); ////////////////////////////////:
+
+    //dim3 grid =
+    //    threadblock_swizzle__1.get_grid_shape(
+    //        GemmKernel__::Params.grid_tiled_shape // params_.grid_tiled_shape
+    //    );
+
+    //dim3 block(
+    //    GemmKernel__::kThreadCount,
+    //    1,
+    //    1
+    //);
+
+#if 0
+    /// Define the kernel
+    using GemmKernel = typename kernel::DefaultGemm <
+        ElementA,
+        LayoutA,
+        kAlignmentA,
+        ElementB,
+        LayoutB,
+        kAlignmentB,
+        ElementC,
+        LayoutC,
+        ElementAccumulator,
+        OperatorClass,
+        ArchTag,
+        ThreadblockShape,
+        WarpShape,
+        InstructionShape,
+        EpilogueOutputOp,
+        ThreadblockSwizzle,
+        kStages,
+        kSplitKSerial,
+        Operator,
+        SharedMemoryClearOption::kNone,
+        GatherA,
+        GatherB,
+        ScatterD,
         PermuteDLayout
-    > ::GemmKernel
-        GemmKernel__;
+    > ::GemmKernel;
+#endif
 
 #if 0
 
-dim3 grid =
-    threadblock_swizzle.get_grid_shape(
-        GemmKernel::Params.grid_tiled_shape // params_.grid_tiled_shape
-    );
 
-dim3 block(
-    GemmKernel::kThreadCount,
-    1,
-    1
-);
 
 cudaError_t result;
 
