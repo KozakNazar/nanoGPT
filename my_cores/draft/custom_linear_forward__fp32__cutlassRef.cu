@@ -438,9 +438,9 @@ torch::Tensor custom_linear_forward(
             exit(0);
         }
     }
-#if 0
+
     // Initialize the Params structure
-    params_ = typename GemmKernel::Params{
+    params_ = typename GemmKernel__::Params{
       args.problem_size,
       grid_shape,
       args.ref_A.non_const_ref(),
@@ -455,7 +455,7 @@ torch::Tensor custom_linear_forward(
     };
 
     //return Status::kSuccess;
-#endif
+
 #endif
 
     TORCH_CHECK(
